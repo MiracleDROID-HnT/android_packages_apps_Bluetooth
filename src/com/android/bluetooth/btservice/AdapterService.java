@@ -205,6 +205,7 @@ public class AdapterService extends Service {
     private PowerManager.WakeLock mWakeLock;
     private String mWakeLockName;
     private UserManager mUserManager;
+    private static BluetoothAdapter mAdapter;
 
     private ProfileObserver mProfileObserver;
     private PhonePolicy mPhonePolicy;
@@ -217,6 +218,13 @@ public class AdapterService extends Service {
                 debugLog("AdapterService() - REFCOUNT: CREATED. INSTANCE_COUNT" + sRefCount);
             }
         }
+
+        mAdapter = BluetoothAdapter.getDefaultAdapter();
+        // This is initialized at the beginning in order to prevent
+        // NullPointerException from happening if AdapterService
+        // functions are called before BLE is turned on due to
+        // |mRemoteDevices| being null.
+        mRemoteDevices = new RemoteDevices(this);
     }
 
     public void addProfile(ProfileService profile) {
@@ -622,8 +630,13 @@ public class AdapterService extends Service {
             mProfileServicesState.clear();
         }
 
-        clearAdapterService();
+        // Unregistering Bluetooth Adapter
+        if ( mAdapter!= null ){
+            mAdapter.unregisterAdapter();
+            mAdapter = null;
+        }
 
+        clearAdapterService();
         if (mBinder != null) {
             mBinder.cleanup();
             mBinder = null;  //Do not remove. Otherwise Binder leak!
